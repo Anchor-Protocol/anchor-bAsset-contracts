@@ -596,17 +596,13 @@ pub fn slashing<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
 ) -> StdResult<()> {
-    let validators = read_validators(&deps.storage)?;
     let mut amount = Uint128::zero();
     let all_delegations = get_all_delegations(&deps.storage).load()?;
     let bonded = get_bonded(&deps.storage).load()?;
-    for validator in validators {
-        let all_delegated = deps
-            .querier
-            .query_delegation(env.contract.address.clone(), validator)?
-            .unwrap();
-        if all_delegated.amount.denom == LUNA {
-            amount += all_delegated.amount.amount;
+    let all_delegated_amount = deps.querier.query_all_delegations(env.contract.address)?;
+    for delegate in all_delegated_amount {
+        if delegate.amount.denom == LUNA {
+            amount += delegate.amount.amount
         }
     }
     let all_changes = (amount - all_delegations)?;
