@@ -35,8 +35,6 @@ use hub_querier::HandleMsg;
 use crate::contract::{handle, init, query};
 use crate::unbond::handle_unbond;
 
-use anchor_basset_reward::msg::HandleMsg::UpdateRewardDenom;
-
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg};
 use cw20_base::msg::HandleMsg::{Burn, Mint};
 use hub_querier::Cw20HookMsg::Unbond;
@@ -408,7 +406,7 @@ fn proper_bond() {
             assert_eq!(
                 msg,
                 &to_binary(&Cw20HandleMsg::Mint {
-                    recipient: addr1,
+                    recipient: addr1.clone(),
                     amount: bond_amount
                 })
                 .unwrap()
@@ -462,10 +460,22 @@ fn proper_bond() {
     };
 
     let env = mock_env(&bob, &[coin(10, "ukrt")]);
-    let res = handle(&mut deps, env, failed_bond);
+    let res = handle(&mut deps, env, failed_bond.clone());
     assert_eq!(
         res.unwrap_err(),
         StdError::generic_err("No uluna assets are provided to bond")
+    );
+
+    //bond with more than one coin is not possible
+    let env = mock_env(
+        &addr1,
+        &[coin(bond_amount.0, "uluna"), coin(bond_amount.0, "uusd")],
+    );
+
+    let res = handle(&mut deps, env, failed_bond).unwrap_err();
+    assert_eq!(
+        res,
+        StdError::generic_err("More than one coin is sent; only one asset is supported")
     );
 }
 
@@ -617,11 +627,8 @@ pub fn proper_update_global_index() {
     };
 
     let env = mock_env(&addr1, &[]);
-    let res = handle(&mut deps, env, reward_msg).unwrap_err();
-    assert_eq!(
-        res,
-        StdError::generic_err("There must be at least one delegation")
-    );
+    let res = handle(&mut deps, env, reward_msg).unwrap();
+    assert_eq!(res.messages.len(), 2);
 
     // bond
     do_bond(&mut deps, addr1.clone(), bond_amount, validator.clone());
@@ -2168,7 +2175,6 @@ pub fn test_update_params() {
         unbonding_period: None,
         peg_recovery_fee: None,
         er_threshold: None,
-        reward_denom: None,
     };
     let owner = HumanAddr::from("owner1");
     let token_contract = HumanAddr::from("token");
@@ -2177,7 +2183,7 @@ pub fn test_update_params() {
     initialize(
         &mut deps,
         owner,
-        reward_contract.clone(),
+        reward_contract,
         token_contract,
         validator.address,
     );
@@ -2203,23 +2209,12 @@ pub fn test_update_params() {
         unbonding_period: Some(3),
         peg_recovery_fee: Some(Decimal::one()),
         er_threshold: Some(Decimal::zero()),
-        reward_denom: Some("ukrw".to_string()),
     };
 
     //the result must be 1
     let creator_env = mock_env(HumanAddr::from("owner1"), &[]);
     let res = handle(&mut deps, creator_env, update_prams).unwrap();
-    assert_eq!(
-        res.messages,
-        vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: reward_contract,
-            send: vec![],
-            msg: to_binary(&UpdateRewardDenom {
-                reward_denom: Some("ukrw".to_string()),
-            })
-            .unwrap()
-        })]
-    );
+    assert_eq!(res.messages.len(), 0);
 
     let params: Parameters = from_binary(&query(&deps, Params {}).unwrap()).unwrap();
     assert_eq!(params.epoch_period, 20);
@@ -2227,7 +2222,7 @@ pub fn test_update_params() {
     assert_eq!(params.unbonding_period, 3);
     assert_eq!(params.peg_recovery_fee, Decimal::one());
     assert_eq!(params.er_threshold, Decimal::zero());
-    assert_eq!(params.reward_denom, "ukrw");
+    assert_eq!(params.reward_denom, "uusd");
 }
 
 /// Covers if peg recovery is applied (in "bond", "unbond",
@@ -2243,7 +2238,6 @@ pub fn proper_recovery_fee() {
         unbonding_period: None,
         peg_recovery_fee: Some(Decimal::from_ratio(Uint128(1), Uint128(1000))),
         er_threshold: Some(Decimal::from_ratio(Uint128(99), Uint128(100))),
-        reward_denom: None,
     };
     let owner = HumanAddr::from("owner1");
     let token_contract = HumanAddr::from("token");
@@ -2504,7 +2498,6 @@ pub fn proper_update_config() {
         unbonding_period: None,
         peg_recovery_fee: None,
         er_threshold: None,
-        reward_denom: None,
     };
 
     let new_owner_env = mock_env(&new_owner, &[]);
@@ -2517,7 +2510,6 @@ pub fn proper_update_config() {
         unbonding_period: None,
         peg_recovery_fee: None,
         er_threshold: None,
-        reward_denom: None,
     };
 
     let new_owner_env = mock_env(&owner, &[]);

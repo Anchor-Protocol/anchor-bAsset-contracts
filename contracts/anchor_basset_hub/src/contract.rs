@@ -42,10 +42,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         .iter()
         .find(|x| x.denom == msg.underlying_coin_denom && x.amount > Uint128::zero())
         .ok_or_else(|| {
-            StdError::generic_err(format!(
-                "No {} assets are provided to bond",
-                &msg.underlying_coin_denom
-            ))
+            StdError::generic_err(format!("No {} assets are provided to bond", "uluna"))
         })?;
 
     // store config
@@ -139,7 +136,6 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             unbonding_period,
             peg_recovery_fee,
             er_threshold,
-            reward_denom,
         } => handle_update_params(
             deps,
             env,
@@ -147,7 +143,6 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             unbonding_period,
             peg_recovery_fee,
             er_threshold,
-            reward_denom,
         ),
         HandleMsg::UpdateConfig {
             owner,
@@ -289,20 +284,25 @@ fn withdraw_all_rewards<S: Storage, A: Api, Q: Querier>(
     delegator: HumanAddr,
 ) -> StdResult<Vec<CosmosMsg>> {
     let mut messages: Vec<CosmosMsg> = vec![];
-    let delegations = deps.querier.query_all_delegations(delegator).unwrap();
-    if delegations.is_empty() {
-        return Err(StdError::generic_err(
-            "There must be at least one delegation",
-        ));
+    let delegations = deps.querier.query_all_delegations(delegator);
+
+    match delegations {
+        Ok(delegations) => {
+            if delegations.is_empty() {
+                Ok(messages)
+            } else {
+                for delegation in delegations {
+                    let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Withdraw {
+                        validator: delegation.validator,
+                        recipient: None,
+                    });
+                    messages.push(msg);
+                }
+                Ok(messages)
+            }
+        }
+        Err(_) => Ok(messages),
     }
-    for delegation in delegations {
-        let msg: CosmosMsg = CosmosMsg::Staking(StakingMsg::Withdraw {
-            validator: delegation.validator,
-            recipient: None,
-        });
-        messages.push(msg)
-    }
-    Ok(messages)
 }
 
 /// Check whether slashing has happened
