@@ -921,10 +921,10 @@ fn proper_prev_balance() {
 
 #[test]
 fn test_migrate() {
-    let deps = mock_dependencies(&[Coin {
+    let mut deps = mock_dependencies(&[Coin {
         denom: "uusd".to_string(),
         amount: Uint128::new(100u128),
     }]);
 
-    migrate(deps.as_ref(), mock_env(), MigrateMsg {}).unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
 }
