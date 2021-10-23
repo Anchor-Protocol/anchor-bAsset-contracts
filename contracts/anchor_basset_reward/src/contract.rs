@@ -11,7 +11,9 @@ use cosmwasm_std::{
     to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 
-use basset::reward::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
+use basset::reward::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
+};
 use terra_cosmwasm::TerraMsgWrapper;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
