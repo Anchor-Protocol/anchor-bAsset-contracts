@@ -74,16 +74,19 @@ impl WasmMockQuerier {
                             base_denom,
                             quote_denoms,
                         } => {
-                            if quote_denoms.iter().any(|item| item == &"mnt".to_string()) {
-                                return SystemResult::Err(SystemError::Unknown {});
-                            }
+                            let exchange_rates = quote_denoms
+                                .iter()
+                                .filter(|d| d != &"mnt")
+                                .map(|e| ExchangeRateItem {
+                                    quote_denom: e.clone(),
+                                    exchange_rate: Decimal::from_str("22.1").unwrap(),
+                                })
+                                .collect();
+
                             SystemResult::Ok(ContractResult::from(to_binary(
                                 &ExchangeRatesResponse {
                                     base_denom: base_denom.to_string(),
-                                    exchange_rates: vec![ExchangeRateItem {
-                                        quote_denom: quote_denoms[0].to_string(),
-                                        exchange_rate: Decimal::from_str("22.1").unwrap(),
-                                    }],
+                                    exchange_rates,
                                 },
                             )))
                         }

@@ -9,6 +9,7 @@ use terra_cosmwasm::{create_swap_msg, ExchangeRatesResponse, TerraMsgWrapper, Te
 /// Swap all native tokens to reward_denom
 /// Only hub_contract is allowed to execute
 #[allow(clippy::if_same_then_else)]
+#[allow(clippy::needless_collect)]
 pub fn execute_swap(
     deps: DepsMut,
     env: Env,
@@ -27,25 +28,21 @@ pub fn execute_swap(
 
     let reward_denom = config.reward_denom;
 
-    let mut is_listed = true;
-
     let denoms: Vec<String> = balance.iter().map(|item| item.denom.clone()).collect();
 
-    if query_exchange_rates(&deps, reward_denom.clone(), denoms).is_err() {
-        is_listed = false;
-    }
+    let exchange_rates = query_exchange_rates(&deps, reward_denom.clone(), denoms)?;
+    let known_denoms: Vec<String> = exchange_rates
+        .exchange_rates
+        .iter()
+        .map(|item| item.quote_denom.clone())
+        .collect();
 
     for coin in balance {
-        if coin.denom == reward_denom.clone() {
+        if coin.denom == reward_denom.clone() || !known_denoms.contains(&coin.denom) {
             continue;
         }
-        if is_listed {
-            messages.push(create_swap_msg(coin, reward_denom.to_string()));
-        } else if query_exchange_rates(&deps, reward_denom.clone(), vec![coin.denom.clone()])
-            .is_ok()
-        {
-            messages.push(create_swap_msg(coin, reward_denom.to_string()));
-        }
+
+        messages.push(create_swap_msg(coin, reward_denom.to_string()));
     }
 
     let res = Response::new()

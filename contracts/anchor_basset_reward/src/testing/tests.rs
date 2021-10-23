@@ -23,15 +23,15 @@ use cosmwasm_std::{
 };
 use terra_cosmwasm::create_swap_msg;
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate, migrate, query};
 use crate::math::{decimal_multiplication_in_256, decimal_subtraction_in_256};
 use crate::state::{store_holder, store_state, Holder, State};
 use crate::testing::mock_querier::{
     mock_dependencies, MOCK_HUB_CONTRACT_ADDR, MOCK_TOKEN_CONTRACT_ADDR,
 };
 use basset::reward::{
-    ConfigResponse, ExecuteMsg, HolderResponse, HoldersResponse, InstantiateMsg, QueryMsg,
-    StateResponse,
+    ConfigResponse, ExecuteMsg, HolderResponse, HoldersResponse, InstantiateMsg, MigrateMsg,
+    QueryMsg, StateResponse,
 };
 use std::str::FromStr;
 
@@ -917,4 +917,14 @@ fn proper_prev_balance() {
             pending_rewards: Decimal::from_str("0.701700000000000000").unwrap(),
         }
     );
+}
+
+#[test]
+fn test_migrate() {
+    let mut deps = mock_dependencies(&[Coin {
+        denom: "uusd".to_string(),
+        amount: Uint128::new(100u128),
+    }]);
+
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
 }

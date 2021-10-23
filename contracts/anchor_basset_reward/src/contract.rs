@@ -11,7 +11,9 @@ use cosmwasm_std::{
     to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 
-use basset::reward::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
+use basset::reward::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StateResponse,
+};
 use terra_cosmwasm::TerraMsgWrapper;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -87,4 +89,9 @@ fn query_state(deps: Deps) -> StdResult<StateResponse> {
         total_balance: state.total_balance,
         prev_reward_balance: state.prev_reward_balance,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    Ok(Response::default())
 }
